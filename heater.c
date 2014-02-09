@@ -24,12 +24,25 @@ typedef struct {
 	volatile uint8_t *heater_port; ///< pointer to port. DDR is inferred from this pointer too
 	uint8_t						heater_pin;  ///< heater pin, not masked. eg for PB3 enter '3' here, or PB3_PIN or similar
 	volatile uint8_t *heater_pwm;  ///< pointer to 8-bit PWM register, eg OCR0A (8-bit) or ORC3L (low byte, 16-bit)
+        int32_t kP; 
+        int32_t kI;
+        int32_t kD;
+        int16_t i_limit;
+  //        int32_t watts;
+  //      int32_t t_dead;
 } heater_definition_t;
 
 #undef DEFINE_HEATER
 /// \brief helper macro to fill heater definition struct from config.h
-#define	DEFINE_HEATER(name, pin, pwm) { &(pin ## _WPORT), pin ## _PIN, \
-                                        pwm ? (pin ## _PWM) : NULL},
+#define	DEFINE_HEATER(name, pin, pwm,kP,kI,kD,i_limit,watts,t_dead) { &(pin ## _WPORT), pin ## _PIN, \
+			pwm ? (pin ## _PWM) : NULL, \
+			(int32_t)(kP > 0 ? kP*PID_SCALE_P     : -kP ), \
+			(int32_t)(kI >=0 ? (kI*PID_SCALE_I): kP*PID_SCALE_I/(-kI) ), \
+			(int32_t)(kD >=0 ? ((float)kD*PID_SCALE_D):  -kD/kP*PID_SCALE_D ), \
+			(int16_t)(i_limit) \
+			/* ,(int32_t)(watts *PID_SCALE)	*/ \
+			/* ,(int32_t)(t_dead*PID_SCALE)     */ \
+			},
 static const heater_definition_t heaters[NUM_HEATERS] =
 {
 	#include	"config_wrapper.h"
@@ -40,7 +53,7 @@ static const heater_definition_t heaters[NUM_HEATERS] =
 	\var heaters_pid
 	\brief this struct holds the heater PID factors
 
-	PID is a fascinating way to control any closed loop control, combining the error (P), cumulative error (I) and rate at which we're approacing the setpoint (D) in such a way that when correctly tuned, the system will achieve target temperature quickly and with little to no overshoot
+	PID is a fascinating way to control any closed loop control, combining the error (P), cumulative error (I) and rate at which we're approaching the setpoint (D) in such a way that when correctly tuned, the system will achieve target temperature quickly and with little to no overshoot
 
 	At every sample, we calculate \f$OUT = k_P (S - T) + k_I \int (S - T) + k_D \frac{dT}{dt}\f$ where S is setpoint and T is temperature.
 
@@ -98,7 +111,11 @@ struct {
 #endif
 
 /// default scaled I limit, equivalent to 384 qC*qs, or 24 C*s
+#ifdef PID_I_LIMIT
+#define         DEFAULT_I_LIMIT PID_I_LIMIT
+#else
 #define		DEFAULT_I_LIMIT	384
+#endif
 
 #ifdef EECONFIG
 /// this lives in the eeprom so we can save our PID settings for each heater
@@ -274,10 +291,10 @@ void heater_init() {
 			if (crc_block(&heaters_pid[i].p_factor, 14) != eeprom_read_word((uint16_t *) &EE_factors[i].crc))
       #endif /* EECONFIG */
       {
-				heaters_pid[i].p_factor = DEFAULT_P;
-				heaters_pid[i].i_factor = DEFAULT_I;
-				heaters_pid[i].d_factor = DEFAULT_D;
-				heaters_pid[i].i_limit = DEFAULT_I_LIMIT;
+				heaters_pid[i].p_factor = heaters[i].kP >= 0 ? heaters[i].kP : DEFAULT_P;
+				heaters_pid[i].i_factor = heaters[i].kI >= 0 ? heaters[i].kI : DEFAULT_I;
+				heaters_pid[i].d_factor = heaters[i].kD >= 0 ? heaters[i].kD : DEFAULT_D;
+				heaters_pid[i].i_limit = heaters[i].i_limit> 0 ? heaters[i].i_limit : DEFAULT_I_LIMIT;
 			}
 		#endif /* BANG_BANG */
 	}
@@ -285,7 +302,7 @@ void heater_init() {
 	// set all heater pins to output
 	do {
 		#undef	DEFINE_HEATER
-		#define	DEFINE_HEATER(name, pin, pwm) WRITE(pin, 0); SET_OUTPUT(pin);
+		#define	DEFINE_HEATER(name, pin, pwm,p,i,d,iLim,watt,t_dead) WRITE(pin, 0); SET_OUTPUT(pin);
 			#include "config_wrapper.h"
 		#undef DEFINE_HEATER
 	} while (0);
