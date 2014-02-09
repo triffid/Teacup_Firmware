@@ -77,11 +77,26 @@ struct {
 #endif
 
 /// default scaled P factor, equivalent to 8.0 counts/qC or 32 counts/C
-#define		DEFAULT_P				8192
+#ifdef PID_P
+#define         DEFAULT_P                               PID_P
+#else
+#define		DEFAULT_P				(32*PID_SCALE_D)
+#endif 
+
 /// default scaled I factor, equivalent to 0.5 counts/(qC*qs) or 8 counts/C*s
-#define		DEFAULT_I				512
+#ifdef PID_I
+#define         DEFAULT_I                               PID_I
+#else
+#define		DEFAULT_I				(8*PID_SCALE_I)
+#endif
+
 /// default scaled D factor, equivalent to 24 counts/(qc/(TH_COUNT*qs)) or 192 counts/(C/s)
-#define		DEFAULT_D				24576
+#ifdef PID_D
+#define         DEFAULT_D                               PID_D
+#else
+#define		DEFAULT_D				(192*PID_SCALE_D)
+#endif
+
 /// default scaled I limit, equivalent to 384 qC*qs, or 24 C*s
 #define		DEFAULT_I_LIMIT	384
 
@@ -321,12 +336,12 @@ void heater_tick(heater_t h, temp_type_t type, uint16_t current_temp, uint16_t t
 
 		// combine factors
 		int32_t pid_output_intermed = ( // Units: counts
-									   (
-										(((int32_t) heater_p) * heaters_pid[h].p_factor) +
-										(((int32_t) heaters_runtime[h].heater_i) * heaters_pid[h].i_factor) +
-										(((int32_t) heater_d) * heaters_pid[h].d_factor)
-										) / PID_SCALE
-									   );
+			(
+				(((int32_t) heater_p) * heaters_pid[h].p_factor) +                     // qC * kP
+				(((int32_t) heaters_runtime[h].heater_i) * heaters_pid[h].i_factor) +  // qC*qs * kI
+				(((int32_t) heater_d) * heaters_pid[h].d_factor)                       // qC/TH_COUNT*qs * kD
+			) / PID_SCALE
+		);
 
     // rebase and limit factors
     if (pid_output_intermed > 255) {
