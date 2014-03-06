@@ -82,8 +82,8 @@ struct {
 #define		DEFAULT_I				512
 /// default scaled D factor, equivalent to 24 counts/(qc/(TH_COUNT*qs)) or 192 counts/(C/s)
 #define		DEFAULT_D				24576
-/// default scaled I limit, equivalent to 384 qC*qs, or 24 C*s
-#define		DEFAULT_I_LIMIT	384
+/// default scaled I limit
+#define		DEFAULT_I_LIMIT	192  /* from old default values: 192=384*0.5, means PID->PD transition at 75% full power */
 
 #ifdef EECONFIG
 /// this lives in the eeprom so we can save our PID settings for each heater
@@ -143,8 +143,8 @@ void heater_init() {
 			TCCR4D = MASK(WGM40); // Phase correct
 			TCCR4B = MASK(CS40);  // no prescaler
 			#ifndef FAST_PWM
-				TCCR4B = MASK(CS40) | MASK(CS42) | MASK(CS43); // 16 MHz / 1024 / 256 
-				//TCCR4B = MASK(CS40) | MASK(CS41) | MASK(CS43); // 16 MHz / 4096 / 256 
+				TCCR4B = MASK(CS40) | MASK(CS42) | MASK(CS43); // 16 MHz / 1024 / 256
+				//TCCR4B = MASK(CS40) | MASK(CS41) | MASK(CS43); // 16 MHz / 4096 / 256
 			#endif
 			TC4H   = 0;           // clear high bits
 			OCR4C  = 0xff;        // 8 bit max count at top before reset
@@ -155,7 +155,7 @@ void heater_init() {
 		TIMSK4 = 0;
 		OCR4A = 0;
 		OCR4B = 0;
-		#ifdef OCR4D  
+		#ifdef OCR4D
 			OCR4D = 0;
 		#endif
 	#endif
@@ -218,7 +218,7 @@ void heater_init() {
 					case (uint16_t) &OCR4B:
 						TCCR4A |= MASK(COM4B1);
 						break;
-					#ifdef OCR4D  
+					#ifdef OCR4D
 						case (uint16_t) &OCR4D:
 							TCCR4C |= MASK(COM4D1);
 							break;
@@ -308,12 +308,13 @@ void heater_tick(heater_t h, temp_type_t type, uint16_t current_temp, uint16_t t
 		heater_p = t_error; // Units: qC where 4qC=1C
 
 		// integral
-		heaters_runtime[h].heater_i += t_error;  // Units: qC*qs where 16qC*qs=1C*s
+#define I_RES 32 /* counts*32 allows accumulation of a qC error with a Ki=0.05 factor */
+		heaters_runtime[h].heater_i += t_error * heaters_pid[h].i_factor/(PID_SCALE/I_RES);  // counts*32 resolves qc*Ki=0.05
 		// prevent integrator wind-up
-		if (heaters_runtime[h].heater_i > heaters_pid[h].i_limit)
-			heaters_runtime[h].heater_i = heaters_pid[h].i_limit;
-		else if (heaters_runtime[h].heater_i < -heaters_pid[h].i_limit)
-			heaters_runtime[h].heater_i = -heaters_pid[h].i_limit;
+		if (heaters_runtime[h].heater_i > heaters_pid[h].i_limit * I_RES)
+			heaters_runtime[h].heater_i = heaters_pid[h].i_limit * I_RES;
+		else if (heaters_runtime[h].heater_i < -heaters_pid[h].i_limit * I_RES)
+			heaters_runtime[h].heater_i = -heaters_pid[h].i_limit * I_RES;
 
 		// derivative.  Units: qC/(TH_COUNT*qs) where 1C/s=TH_COUNT*4qC/4qs=8qC/qs)
 		// note: D follows temp rather than error so there's no large derivative when the target changes
@@ -321,12 +322,21 @@ void heater_tick(heater_t h, temp_type_t type, uint16_t current_temp, uint16_t t
 
 		// combine factors
 		int32_t pid_output_intermed = ( // Units: counts
+<<<<<<< HEAD
 									   (
 										(((int32_t) heater_p) * heaters_pid[h].p_factor) +
 										(((int32_t) heaters_runtime[h].heater_i) * heaters_pid[h].i_factor) +
 										(((int32_t) heater_d) * heaters_pid[h].d_factor)
 										) / PID_SCALE
 									   );
+=======
+			(
+				(((int32_t) heater_p) * heaters_pid[h].p_factor) +
+				(((int32_t) heater_d) * heaters_pid[h].d_factor)
+			) / PID_SCALE
+			+ (((int32_t) heaters_runtime[h].heater_i)/I_RES)
+		);
+>>>>>>> heater.c: Make PID I_LIMIT/M133 act in terms of output power, not C*s/16
 
     // rebase and limit factors
     if (pid_output_intermed > 255) {
