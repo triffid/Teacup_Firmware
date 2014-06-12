@@ -78,12 +78,12 @@ struct {
 
 /// default scaled P factor, equivalent to 8.0 counts/qC or 32 counts/C
 #define		DEFAULT_P				8192
-/// default scaled I factor, equivalent to 0.5 counts/(qC*qs) or 8 counts/C*s
-#define		DEFAULT_I				512
+/// default scaled I factor, equivalent to 0.0625 counts/(qC*qs) or 1 counts/C*s for a default Ti of 32s
+#define		DEFAULT_I				64
 /// default scaled D factor, equivalent to 24 counts/(qc/(TH_COUNT*qs)) or 192 counts/(C/s)
 #define		DEFAULT_D				24576
-/// default scaled I limit, equivalent to 384 qC*qs, or 24 C*s
-#define		DEFAULT_I_LIMIT	384
+/// default scaled I limit, equivalent to 3072 qC*qs, or 192 C*s
+#define		DEFAULT_I_LIMIT	3072
 
 #ifdef EECONFIG
 /// this lives in the eeprom so we can save our PID settings for each heater
