@@ -508,6 +508,30 @@ void pid_set_d(heater_t index, int32_t d) {
 	#endif /* BANG_BANG */
 }
 
+/** \brief set PID factors based on proportional range 
+	\param index heater to change factors for
+	\param r unscaled range around setpoint
+	\param Ti Integral Time Constant
+	Sets Kp for full-scale output at setpoint-r
+	Sets Ki to a similar 
+       
+*/
+void pid_set_proportional(heater_t index, int32_t r, int32_t Ti){
+	#ifndef	BANG_BANG
+		if (index >= NUM_HEATERS)
+			return;
+		if (r <= 0)
+			return;
+		if (Ti <= 0 && heaters_pid[index].i_factor > 0) // use existing time constant
+			Ti=heaters_pid[index].p_factor*4/heaters_pid[index].i_factor; // seconds
+		heaters_pid[index].p_factor = 255*PID_SCALE/r/4;  // mibicounts/qc
+		heaters_pid[index].i_factor = Ti > 0 ? heaters_pid[index].p_factor/Ti/4 : 0;
+		heaters_pid[index].d_factor = 0;
+	#endif /* BANG_BANG */
+}
+
+
+
 /** \brief set heater I limit
 	\param index heater to set I limit for
 	\param i_limit scaled I limit

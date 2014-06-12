@@ -701,6 +701,17 @@ void process_gcode_command() {
 				//? Undocumented.
 				heater_save_settings();
 				break;
+
+			case 135:
+				//? --- M135: Set PID to proportional band defaults ---
+				//? Set kP=255/Sxxx, Ki=kP/30s Kd=0
+        #ifdef HEATER_EXTRUDER
+          if ( ! next_target.seen_P)
+            next_target.P = HEATER_EXTRUDER;
+        #endif
+				if (next_target.seen_S)
+					pid_set_proportional(next_target.P, next_target.S, -1);
+				break;
       #endif /* EECONFIG */
 
 			#ifdef	DEBUG
