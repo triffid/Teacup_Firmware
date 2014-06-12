@@ -513,7 +513,9 @@ void pid_set_d(heater_t index, int32_t d) {
 	\param r unscaled range around setpoint
 	\param Ti Integral Time Constant
 	Sets Kp for full-scale output at setpoint-r
-	Sets Ki to a similar 
+	Sets Ki to produce a specified integral time (Ti>0) or to maintain current integral time
+	Sets Kd to zero
+	Sets Integral limit to allow full-scale output 
        
 */
 void pid_set_proportional(heater_t index, int32_t r, int32_t Ti){
@@ -527,6 +529,7 @@ void pid_set_proportional(heater_t index, int32_t r, int32_t Ti){
 		heaters_pid[index].p_factor = 255*PID_SCALE/r/4;  // mibicounts/qc
 		heaters_pid[index].i_factor = Ti > 0 ? heaters_pid[index].p_factor/Ti/4 : 0;
 		heaters_pid[index].d_factor = 0;
+		heaters_pid[index].i_limit = heaters_pid[index].i_factor > 0 ? 255*PID_SCALE/heaters_pid[index].i_factor : 384;
 	#endif /* BANG_BANG */
 }
 
