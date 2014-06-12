@@ -57,7 +57,7 @@ struct {
 
 /// \brief this struct holds the runtime heater data- PID integrator history, temperature history, sanity checker
 struct {
-	int16_t						heater_i; ///< integrator, \f$-i_{limit} < \sum{4*eC*\Delta t} < i_{limit}\f$
+	int32_t						heater_i; ///< integrator, \f$-i_{limit} < \sum{4*eC*\Delta t} < i_{limit}\f$
 
 	uint16_t					temp_history[TH_COUNT]; ///< store last TH_COUNT readings in a ring, so we can smooth out our differentiator
 	uint8_t						temp_history_pointer;   ///< pointer to last entry in ring
