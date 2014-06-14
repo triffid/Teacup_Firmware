@@ -33,6 +33,15 @@
   #error Teensy++ has an at90usb128?! set your cpu type in Makefile!
 #endif
 
+/* Compilation notes:
+
+    MCU_TARGET=at90usb1286 make -f Makefile-AVR
+
+    The at90usb1286 hex files are not supported by simulavr.
+*/
+
+
+
 /** \def F_CPU
   CPU clock rate
 */
@@ -483,18 +492,54 @@ DEFINE_TEMP_SENSOR(bed,       TT_THERMISTOR,  AIO6,      THERMISTOR_EXTRUDER)
 * with slow switches, like solid state relays. PWM frequency can be         *
 * influenced globally with FAST_PWM, see below.                             *
 *                                                                           *
+* Set 'kP' to the counts/255 per degree C of error.                         *
+* Higher values have quicker response but are more prone to overshoot.      *
+* Teacup default is 32 counts/C.                                            *
+*                                                                           *
+* Set 'kI to the integral factor (sometimes defined as kP/Ti) in            *
+* counts/(C*s) of integrated error. Teacup default is  8 counts/(Cs).       *
+* Good values of kI are kP/(2-3 times the dead-time) or                     * 
+* kP/(0.5-0.0.8 times the period of oscillation.  Smaller kP reduce the     *
+* influence on this term. Negative values of kI are interpreted as the      *
+* integral time constant in seconds.                                        *
+*                                                                           *
+* Set 'kD' to the derivative factor in counts/(C/s).  Smaller values limit  *
+* the influence of noise.  Negative values are interpreted as 'tD', the     *
+* derivative time, and are converted per kD=tD/kP.  Teacup default is       *
+* 192 counts/(C/s).                                                         *
+*                                                                           *
+* Set 'ILIM' to the limit of the integral error accumulator in C*s.         *
+* Teacup's prior default was 384 C*s/16, or 24 C*s.  ILIM is used to limit  *
+* the integral windup and reduce the chances of overshoot.  If integral     *
+* windup is controlled by PID_CONDITIONAL_INTEGRATION, ILIM can be left     *
+* quite high.  Reasonable values of ILIM should be 255/kI to enable the     *
+* integral term to eliminate all process errors up to full output power.    *
+*                                                                           *
+* You can set and read the above values with M130-M136.                     *
+* The kP, kI, and kD values are set and reported in internal units.         *
+*                                                                           *
+* Set 'watts' to to the full-scale output of the heater.  This is currently *
+* unused.                                                                   *
+*                                                                           *
+* set 't_dead' to the dead-time, the time it takes before the heater        *
+* begins to respond after a change in output. This is currently unused.     *
+*                                                                           *
+* See https://controls.engin.umich.edu/wiki/index.php/PIDTuningClassical    *
+* or http://www.controlguru.com/  for some further explanation of these     *
+* parameters and guides on how to tune them.                                *
+*                                                                           *
 \***************************************************************************/
 
 #ifndef DEFINE_HEATER
   #define DEFINE_HEATER(...)
 #endif
 
-//            name      port   pwm
-DEFINE_HEATER(extruder, DIO15, 1)
-DEFINE_HEATER(bed,      DIO14,  1)
-DEFINE_HEATER(fan,      DIO16,  0)
-// DEFINE_HEATER(chamber,  PIND7, 1)
-// DEFINE_HEATER(motor,    PIND6, 1)
+//            name        port   pwm  kP   kI  kD   ILIM  Watts, t_dead
+DEFINE_HEATER(extruder, DIO15,   1,   32, 0.5,  0, 31000,    21,   9)
+DEFINE_HEATER(bed,      DIO14,   1,   32, 0.5,  0, 31000,   150,  15)
+//DEFINE_HEATER(fan,      DIO16,   0, 24, 0.5,  0, 31000,  0.21,   1)
+// DEFINE_HEATER(chamber, PIND7,   1, 24, 0.5,  0, 31000,    40,  40)
+// DEFINE_HEATER(motor,   PIND6,   0, 24, 0.5,  0, 31000,    50,   0)
 
 /// and now because the c preprocessor isn't as smart as it could be,
 /// uncomment the ones you've listed above and comment the rest.
@@ -504,7 +549,7 @@ DEFINE_HEATER(fan,      DIO16,  0)
 
 #define HEATER_EXTRUDER HEATER_extruder
 #define HEATER_BED HEATER_bed
-#define HEATER_FAN HEATER_fan
+//#define HEATER_FAN HEATER_fan
 // #define HEATER_CHAMBER HEATER_chamber
 // #define HEATER_MOTOR HEATER_motor
 
@@ -566,7 +611,7 @@ BANG_BANG
 drops PID loop from heater control, reduces code size significantly (1300 bytes!)
 may allow DEBUG on '168
 */
-#define BANG_BANG
+//#define BANG_BANG
 /** \def BANG_BANG_ON
 BANG_BANG_ON
 PWM value for 'on'
