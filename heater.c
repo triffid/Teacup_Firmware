@@ -479,6 +479,7 @@ void pid_set_p(heater_t index, int32_t p) {
 			return;
 
 		heaters_pid[index].p_factor = p;
+		heater_print(index);
 	#endif /* BANG_BANG */
 }
 
@@ -492,6 +493,7 @@ void pid_set_i(heater_t index, int32_t i) {
 			return;
 
 		heaters_pid[index].i_factor = i;
+		heater_print(index);
 	#endif /* BANG_BANG */
 }
 
@@ -505,6 +507,7 @@ void pid_set_d(heater_t index, int32_t d) {
 			return;
 
 		heaters_pid[index].d_factor = d;
+		heater_print(index);
 	#endif /* BANG_BANG */
 }
 
@@ -530,6 +533,7 @@ void pid_set_proportional(heater_t index, int32_t r, int32_t Ti){
 		heaters_pid[index].i_factor = Ti > 0 ? heaters_pid[index].p_factor/Ti/4 : 0;
 		heaters_pid[index].d_factor = 0;
 		heaters_pid[index].i_limit = heaters_pid[index].i_factor > 0 ? 255*PID_SCALE/heaters_pid[index].i_factor : 384;
+		heater_print(index);
 	#endif /* BANG_BANG */
 }
 
@@ -545,6 +549,7 @@ void pid_set_i_limit(heater_t index, int32_t i_limit) {
 			return;
 
 		heaters_pid[index].i_limit = i_limit;
+		heater_print(index);
 	#endif /* BANG_BANG */
 }
 
