@@ -528,9 +528,9 @@ void pid_set_proportional(heater_t index, int32_t r, int32_t Ti){
 		if (r <= 0)
 			return;
 		if (Ti <= 0 && heaters_pid[index].i_factor > 0) // use existing time constant
-			Ti=heaters_pid[index].p_factor*4/heaters_pid[index].i_factor; // seconds
+			Ti=heaters_pid[index].p_factor/heaters_pid[index].i_factor; // quarterseconds
 		heaters_pid[index].p_factor = 255*PID_SCALE/r/4;  // mibicounts/qc
-		heaters_pid[index].i_factor = Ti > 0 ? heaters_pid[index].p_factor/Ti/4 : 0;
+		heaters_pid[index].i_factor = Ti > 0 ? heaters_pid[index].p_factor/Ti : 0;
 		heaters_pid[index].d_factor = 0;
 		heaters_pid[index].i_limit = heaters_pid[index].i_factor > 0 ? 255*PID_SCALE/heaters_pid[index].i_factor : 384;
 		heater_print(index);
